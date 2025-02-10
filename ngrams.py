@@ -1,6 +1,7 @@
 import re
 import copy
 import random
+import sys
 from typing import OrderedDict
 
 '''
@@ -34,6 +35,10 @@ historyDict = OrderedDict()
 ngramTable = OrderedDict()
 ngramTable['<start>'] = OrderedDict()
 
+numSentences = 1
+gramSize = 1
+
+files = []
 text = ""
 
 
@@ -43,7 +48,6 @@ def getText(i):
 
 def getNextWord(text):
     total = 0
-    commonText = ""
 
     keyList = copy.deepcopy(list(ngramTable[text].keys()))
     keyList.sort(key=lambda k: ngramTable[text][k], reverse=True)
@@ -61,69 +65,129 @@ def getNextWord(text):
     return keyList[-1]
 
 
-def main():
-    # load text
-    file = open("test.txt")
-    text = str(file.read())
+def containsEnding(sentence):
+    for c in sentence:
+        match c:
+            case '.' | '!' | '?':
+                return True
 
-    words = re.findall(r'\b[\w\']+\b|[\.\!\?\,]', text)
-    numWords = len(words)
-    gramSize = 1
+    return False
 
-    if numWords < gramSize:
-        return
+def splitGramArray(grams):
+    listOfGrams = []
+    currentGramList = []
+    for gram in grams:
+        currentGramList.append(gram)
+        if gram.type == 1 and getText(gram.text) != ',':
+            listOfGrams.append(copy.deepcopy(currentGramList))
+            currentGramList = []
 
-    # Get grams
-    grams = []
-    startGram = Gram(0, '<start>')
-    grams.append(startGram)
+    return listOfGrams
 
-    for i, word in enumerate(words):
-        if word[0].isalnum():
-            gram = Gram(2, word)
-            grams.append(gram)
 
-        else:
-            gram = Gram(1, word)
-            grams.append(gram)
-
-            if i < numWords - 1 and word != ',':
-                startGram = Gram(0, '<start>')
-                grams.append(startGram)
-
-    # Build ngram table
-    for i, gram in enumerate(grams):
-        if i == len(grams) - 1:
-            break
-
-        text = getText(grams[i].text)
-        nextText = getText(grams[i+1].text)
-
-        if text in ngramTable:
-            if nextText in ngramTable[text]:
-                ngramTable[text][nextText] += 1
-            else:
-                ngramTable[text][nextText] = 1
-        else:
-            ngramTable[text] = OrderedDict()
-            ngramTable[text][nextText] = 1
-
+def generateSentence():
     string = ""
     prev = "<start>"
+    lastWord = prev
     while True:
-        prev = getNextWord(prev)
+        prev = getNextWord(lastWord)
+        words = re.findall(r'\b[\w\']+\b|[\.\!\?\,]', prev)
+        firstWord = words[0]
+        lastWord = words[-1]
 
         space = " "
-        if string == "" or not prev[0].isalnum():
+        if string == "" or not firstWord[0].isalnum():
             space = ""
 
         string += space + prev
 
-        if (not prev[0].isalnum() and not prev[0] == ','):
+        if containsEnding(prev):
             break
 
     print(string)
 
 
+def main():
+    grams = []
+
+    # load text
+    for file in files:
+        file = open(file)
+        text = str(file.read())
+
+        words = re.findall(r'\b[\w\']+\b|[\.\!\?\,]', text)
+        numWords = len(words)
+
+        # Get grams
+        startGram = Gram(0, '<start>')
+        grams.append(startGram)
+
+        for i, word in enumerate(words):
+            if word[0].isalnum():
+                gram = Gram(2, word)
+                grams.append(gram)
+
+            else:
+                gram = Gram(1, word)
+                grams.append(gram)
+
+                if i < numWords - 1 and word != ',':
+                    startGram = Gram(0, '<start>')
+                    grams.append(startGram)
+
+    # Build ngram table
+    gramSentences = splitGramArray(grams)
+
+    for sentence in gramSentences:
+        for i, gram in enumerate(sentence):
+            if i + 1 >= len(sentence):
+                continue
+
+            text = getText(gram.text)
+
+            nextText = ""
+            prev = text
+            if gramSize == 1:
+                nextText = getText(sentence[i + 1].text)
+
+            else:
+                for j in range(gramSize):
+                    if i + 1 + j >= len(sentence):
+                        break
+
+                    prev = getText(sentence[i + 1 + j].text)
+
+                    space = " "
+                    if not prev[0].isalnum() or j == 0:
+                        space = ""
+
+                    nextText += space + prev
+
+            if text in ngramTable:
+                if nextText in ngramTable[text]:
+                    ngramTable[text][nextText] += 1
+                else:
+                    ngramTable[text][nextText] = 1
+            else:
+                ngramTable[text] = OrderedDict()
+                ngramTable[text][nextText] = 1
+
+    for i in range(numSentences):
+        generateSentence()
+        
+        if i < numSentences - 1:
+            print("----")
+
+
 if __name__ == "__main__":
+    numSentences = int(sys.argv[1])
+    gramSize = int(sys.argv[2])
+
+    for i in range(len(sys.argv) - 3):
+        files.append(sys.argv[3 + i])
+
+    if files == []:
+        exit()
+
+
     main()
