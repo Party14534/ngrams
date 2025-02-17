@@ -18,17 +18,16 @@ type:
 
 class Gram:
     type = 0
-    text = -1
+    text = ""
 
     def __init__(self, _type, _text):
         self.type = _type
+        self.text = _text
 
         if _text in historyDict:
             historyDict[_text] += 1
-            self.text = list(historyDict.keys()).index(_text)
         else:
             historyDict[_text] = 1
-            self.text = list(historyDict.keys()).index(_text)
 
 
 historyDict = OrderedDict()
@@ -42,11 +41,11 @@ files = []
 text = ""
 
 
-def getText(i):
-    return list(historyDict.keys())[i]
+def getNextWord(grams):
+    text = ""
+    for gram in grams:
+        text += gram
 
-
-def getNextWord(text):
     total = 0
 
     keyList = copy.deepcopy(list(ngramTable[text].keys()))
@@ -73,12 +72,13 @@ def containsEnding(sentence):
 
     return False
 
+
 def splitGramArray(grams):
     listOfGrams = []
     currentGramList = []
     for gram in grams:
         currentGramList.append(gram)
-        if gram.type == 1 and getText(gram.text) != ',':
+        if gram.type == 1 and gram.text != ',':
             listOfGrams.append(copy.deepcopy(currentGramList))
             currentGramList = []
 
@@ -87,21 +87,22 @@ def splitGramArray(grams):
 
 def generateSentence():
     string = ""
-    prev = "<start>"
-    lastWord = prev
+    wordList = []
+    for _ in range(gramSize):
+        wordList.append("<start>")
+
     while True:
-        prev = getNextWord(lastWord)
-        words = re.findall(r'\b[\w\']+\b|[\.\!\?\,]', prev)
-        firstWord = words[0]
-        lastWord = words[-1]
+        nextWord = getNextWord(wordList)
+        wordList.pop(0)
+        wordList.append(nextWord)
 
         space = " "
-        if string == "" or not firstWord[0].isalnum():
+        if string == "" or not nextWord[0].isalnum():
             space = ""
 
-        string += space + prev
+        string += space + nextWord
 
-        if containsEnding(prev):
+        if containsEnding(nextWord):
             break
 
     print(string)
@@ -120,7 +121,9 @@ def main():
 
         # Get grams
         startGram = Gram(0, '<start>')
-        grams.append(startGram)
+
+        for i in range(gramSize):
+            grams.append(startGram)
 
         for i, word in enumerate(words):
             if word[0].isalnum():
@@ -132,36 +135,24 @@ def main():
                 grams.append(gram)
 
                 if i < numWords - 1 and word != ',':
-                    startGram = Gram(0, '<start>')
-                    grams.append(startGram)
+                    for i in range(gramSize):
+                        grams.append(startGram)
 
     # Build ngram table
     gramSentences = splitGramArray(grams)
 
     for sentence in gramSentences:
         for i, gram in enumerate(sentence):
-            if i + 1 >= len(sentence):
+            if i == 0:
+                i = gramSize - 1
                 continue
 
-            text = getText(gram.text)
+            texts = sentence[i - gramSize:i]
+            text = ""
+            for word in texts:
+                text += word.text
 
-            nextText = ""
-            prev = text
-            if gramSize == 1:
-                nextText = getText(sentence[i + 1].text)
-
-            else:
-                for j in range(gramSize):
-                    if i + 1 + j >= len(sentence):
-                        break
-
-                    prev = getText(sentence[i + 1 + j].text)
-
-                    space = " "
-                    if not prev[0].isalnum() or j == 0:
-                        space = ""
-
-                    nextText += space + prev
+            nextText = sentence[i].text
 
             if text in ngramTable:
                 if nextText in ngramTable[text]:
@@ -174,7 +165,6 @@ def main():
 
     for i in range(numSentences):
         generateSentence()
-        
         if i < numSentences - 1:
             print("----")
 
@@ -188,6 +178,5 @@ if __name__ == "__main__":
 
     if files == []:
         exit()
-
 
     main()
