@@ -9,9 +9,9 @@ word.
 The user uses this file like this:
     python ngram.py 5 3 text.txt text2.txt ...
 
-The first number represents the number of sentences to be generated, the second
-the number of ngrams. The user then adds the variable number of text documents
-to be analyzed.
+The first number represents the number of ngrams, the second number represents
+the number of sentences to be generated. The user then adds the variable number
+of text documents to be analyzed.
 
 two tables, one for history one for words
 ngram table = dict of dict
@@ -204,8 +204,8 @@ def main():
 
 if __name__ == "__main__":
     # Get the user supplied variables
-    numSentences = int(sys.argv[1])
-    gramSize = int(sys.argv[2])
+    gramSize = int(sys.argv[1])
+    numSentences = int(sys.argv[2])
 
     for i in range(len(sys.argv) - 3):
         files.append(sys.argv[3 + i])
